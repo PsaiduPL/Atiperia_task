@@ -21,7 +21,7 @@ This application provides a single REST endpoint that interacts with the public 
 
 ### Prerequisites
 *   **Java 21** or newer
-*   **Maven**
+  
 ### Additional
 *   **GitHub Personal Access Token for more requestes**
 ### Configuration
@@ -72,7 +72,7 @@ Retrieves a list of non-forked repositories and their branches for a given GitHu
 
 #### Sample Request (cURL)
 ```bash
-curl --location 'http://localhost:8080/api/octocat'
+curl http://localhost:8080/api/Exampl
 ```
 ---
 
@@ -105,7 +105,7 @@ Returns a JSON array of repository objects.
     {
     "status": 404,
     "message": "User doesn't exists"
-}
+    }
     ```
 
 *   **Code:** `500 Internal Server Error` <br/>
