@@ -36,7 +36,7 @@ public class GitService {
         //System.out.println(gitTokenOptional.isPresent());
         if (!env.getProperty("api.gittoken").isBlank()) {
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + env.getProperty("passwd.gittoken"));
+            headers.set("Authorization", "Bearer " + env.getProperty("api.gittoken"));
             entity = new HttpEntity<String>(headers);
 
         }
@@ -81,7 +81,7 @@ public class GitService {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = null;
 
-        if (!env.getProperty("passwd.gittoken").isBlank()) {
+        if (!env.getProperty("api.gittoken").isBlank()) {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + env.getProperty("api.gittoken"));
             entity = new HttpEntity<String>(headers);
