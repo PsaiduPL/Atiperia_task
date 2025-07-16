@@ -24,7 +24,7 @@ public class GitService {
     GitService(RestTemplate restTemplate, Environment environment) {
         this.restTemplate = restTemplate;
         this.env = environment;
-        if(env.getProperty("passwd.gittoken").isBlank()){
+        if(env.getProperty("api.gittoken").isBlank()){
             logger.warn("No API key provided consider api key for more requestes");
         }
     }
@@ -34,7 +34,7 @@ public class GitService {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = null;
         //System.out.println(gitTokenOptional.isPresent());
-        if (!env.getProperty("passwd.gittoken").isBlank()) {
+        if (!env.getProperty("api.gittoken").isBlank()) {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + env.getProperty("passwd.gittoken"));
             entity = new HttpEntity<String>(headers);
@@ -83,7 +83,7 @@ public class GitService {
 
         if (!env.getProperty("passwd.gittoken").isBlank()) {
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + env.getProperty("passwd.gittoken"));
+            headers.set("Authorization", "Bearer " + env.getProperty("api.gittoken"));
             entity = new HttpEntity<String>(headers);
 
         }
