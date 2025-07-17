@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS users(
+    id BIGSERIAL PRIMARY KEY NOT NULL,
+    name VARCHAR(150) UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_data(
+    user_id BIGINT PRIMARY KEY REFERENCES users(id),
+    repos JSONB,
+    data_timestamp TIMESTAMP DEFAULT NOW()
+    );

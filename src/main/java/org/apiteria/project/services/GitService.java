@@ -1,6 +1,7 @@
 package org.apiteria.project.services;
 
 
+import org.apiteria.project.repositories.githubDataRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,17 +20,34 @@ public class GitService {
 
     private final Environment env;
     private final RestTemplate restTemplate;
+    private final githubDataRepository githubDataRepository;
     final Logger logger = LoggerFactory.getLogger(GitService.class);
 
-    GitService(RestTemplate restTemplate, Environment environment) {
+    GitService(RestTemplate restTemplate,
+               Environment environment,
+               githubDataRepository githubDataRepository) {
+
         this.restTemplate = restTemplate;
         this.env = environment;
-        if(env.getProperty("api.gittoken").isBlank()){
+        this.githubDataRepository = githubDataRepository;
+
+        if (env.getProperty("api.gittoken").isBlank()) {
             logger.warn("No API key provided consider api key for more requestes");
         }
     }
 
     public List<Map<String, Object>> getReposAsList(String nickname) throws Exception {
+        List<Map<String, Object>> data = null;
+        boolean ifExists = githubDataRepository.checkIfExists(nickname);
+
+        if(ifExists){
+            data = githubDataRepository.getByName(nickname);
+        }
+        if(data != null){
+            logger.warn("zwrocona bez fetchowania");
+            return data;
+        }
+
         String url = "https://api.github.com/users/{nickname}/repos";
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<String> entity = null;
@@ -50,13 +68,18 @@ public class GitService {
                 nickname
         );
 
-        List<Map<String, Object>> data = response.getBody();
+         data = response.getBody();
 
         data = filterDataForNotForkedRepos(data);
         data.parallelStream().forEach(repo -> {
             repo.put("branches", getBranchesFromRepo(nickname, repo.get("repositoryName").toString()));
         });
+        if(ifExists){
+            githubDataRepository.updateByName(nickname,data);
+        }else{
 
+            githubDataRepository.insert(nickname, data);
+        }
         return data;
     }
 
@@ -67,9 +90,9 @@ public class GitService {
         {
             HashMap<String, Object> owner = (HashMap<String, Object>) repo.get("owner");
 
-            LinkedHashMap<String,Object> data = new LinkedHashMap<>();
-            data.put("login",owner.get("login"));
-            data.put( "repositoryName", repo.get("name"));
+            LinkedHashMap<String, Object> data = new LinkedHashMap<>();
+            data.put("login", owner.get("login"));
+            data.put("repositoryName", repo.get("name"));
 
             return data;
         }).collect(Collectors.toList());
