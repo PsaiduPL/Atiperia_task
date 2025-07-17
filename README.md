@@ -48,6 +48,7 @@ You can configure the token in one of the following ways:
     git clone https://github.com/PsaiduPL/Atiperia_task.git
     cd Atiperia_task
     ```
+Main Version is on branch main.
 
 2.  **Run the application using the Maven wrapper**
     ```bash
