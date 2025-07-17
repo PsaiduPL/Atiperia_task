@@ -24,22 +24,17 @@ public class GitService {
     GitService(RestTemplate restTemplate, Environment environment) {
         this.restTemplate = restTemplate;
         this.env = environment;
-        if(env.getProperty("api.gittoken").isBlank()){
+        if (env.getProperty("api.gittoken").isBlank()) {
             logger.warn("No API key provided consider api key for more requestes");
         }
     }
 
     public List<Map<String, Object>> getReposAsList(String nickname) throws Exception {
         String url = "https://api.github.com/users/{nickname}/repos";
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = null;
-        //System.out.println(gitTokenOptional.isPresent());
-        if (!env.getProperty("api.gittoken").isBlank()) {
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + env.getProperty("api.gittoken"));
-            entity = new HttpEntity<String>(headers);
 
-        }
+        HttpEntity<String> entity = getAuthorizationIfGitTokenExists();
+        //System.out.println(gitTokenOptional.isPresent());
+
 
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 url,
@@ -50,14 +45,12 @@ public class GitService {
                 nickname
         );
 
-        List<Map<String, Object>> data = response.getBody();
+        List<Map<String, Object>> repos = response.getBody();
 
-        data = filterDataForNotForkedRepos(data);
-        data.parallelStream().forEach(repo -> {
-            repo.put("branches", getBranchesFromRepo(nickname, repo.get("repositoryName").toString()));
-        });
+        repos = filterDataForNotForkedRepos(repos);
+        addBranchesToRepos(repos, nickname);
 
-        return data;
+        return repos;
     }
 
     private List<Map<String, Object>> filterDataForNotForkedRepos(List<Map<String, Object>> repos) {
@@ -67,26 +60,26 @@ public class GitService {
         {
             HashMap<String, Object> owner = (HashMap<String, Object>) repo.get("owner");
 
-            LinkedHashMap<String,Object> data = new LinkedHashMap<>();
-            data.put("login",owner.get("login"));
-            data.put( "repositoryName", repo.get("name"));
+            LinkedHashMap<String, Object> data = new LinkedHashMap<>();
+            data.put("login", owner.get("login"));
+            data.put("repositoryName", repo.get("name"));
 
             return data;
         }).collect(Collectors.toList());
 
     }
 
+    private void addBranchesToRepos(List<Map<String, Object>> repos, String nickname) {
+        repos.parallelStream().forEach(repo -> {
+            repo.put("branches", getBranchesFromRepo(nickname, repo.get("repositoryName").toString()));
+        });
+    }
+
     private List<Map<String, Object>> getBranchesFromRepo(String login, String repo) {
         String url = "https://api.github.com/repos/{login}/{repo}/branches";
-        HttpHeaders headers = new HttpHeaders();
-        HttpEntity<String> entity = null;
 
-        if (!env.getProperty("api.gittoken").isBlank()) {
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + env.getProperty("api.gittoken"));
-            entity = new HttpEntity<String>(headers);
+        HttpEntity<String> entity = getAuthorizationIfGitTokenExists();
 
-        }
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
@@ -105,5 +98,15 @@ public class GitService {
         }).collect(Collectors.toList());
     }
 
+    private HttpEntity<String> getAuthorizationIfGitTokenExists() {
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> entity = null;
+        if (!env.getProperty("api.gittoken").isBlank()) {
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Bearer " + env.getProperty("api.gittoken"));
+            entity = new HttpEntity<String>(headers);
 
+        }
+        return entity;
+    }
 }
