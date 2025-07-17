@@ -2,9 +2,6 @@ package org.apiteria.project.repositories;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,15 +10,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.xml.crypto.Data;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Repository
-public class githubDataRepository implements githubRepositoryI<List<Map<String,Object>>>{
-    Logger logger = LoggerFactory.getLogger(githubDataRepository.class);
+public class GithubDataRepository implements AbstractGithubRepository<List<Map<String, Object>>> {
+    Logger logger = LoggerFactory.getLogger(GithubDataRepository.class);
     final JdbcTemplate jdbcTemplate;
     final ObjectMapper objectMapper;
     String dbUsers = """
@@ -38,7 +32,8 @@ public class githubDataRepository implements githubRepositoryI<List<Map<String,O
                 data_timestamp TIMESTAMP DEFAULT NOW()
             )
             """;
-    public githubDataRepository(JdbcTemplate jdbcTemplate,ObjectMapper objectMapper) {
+
+    public GithubDataRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
 
@@ -50,21 +45,23 @@ public class githubDataRepository implements githubRepositoryI<List<Map<String,O
     @Override
     public List<Map<String, Object>> getByName(String name) {
         String sql = """
-               SELECT repos FROM user_data WHERE data_timestamp > NOW() - interval '5 MINUTES' AND id = ? """;
+                SELECT repos FROM user_data WHERE data_timestamp > NOW() - interval '5 MINUTES' AND id = ? """;
         Long id = getIdByName(name);
 
-        try{
-        String json = jdbcTemplate.queryForObject(sql, String.class, id);
-        return objectMapper.readValue(json,new TypeReference<List<Map<String,Object>>>() {});
-        }catch(DataAccessException | JsonProcessingException e){
+        try {
+            String json = jdbcTemplate.queryForObject(sql, String.class, id);
+            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
+            });
+        } catch (DataAccessException | JsonProcessingException e) {
             return null;
         }
 
     }
+
     @Override
-    public boolean checkIfExists(String name){
-        if(getIdByName(name) != null){
-           return true;
+    public boolean checkIfExists(String name) {
+        if (getIdByName(name) != null) {
+            return true;
 
         }
 
@@ -73,15 +70,16 @@ public class githubDataRepository implements githubRepositoryI<List<Map<String,O
 
 
     }
-    @Override
-    public void updateByName(String name,List<Map<String, Object>> obj) {
-        String sql = """
-                UPDATE user_data SET repos = ?::jsonb, data_timestamp = NOW() WHERE id = ?""" ;
-        try{
 
-            jdbcTemplate.update(sql,objectMapper.writeValueAsString(obj),getIdByName(name));
-        }catch(JsonProcessingException e){
-            logger.error("updateByName ",e);
+    @Override
+    public void updateByName(String name, List<Map<String, Object>> obj) {
+        String sql = """
+                UPDATE user_data SET repos = ?::jsonb, data_timestamp = NOW() WHERE id = ?""";
+        try {
+
+            jdbcTemplate.update(sql, objectMapper.writeValueAsString(obj), getIdByName(name));
+        } catch (JsonProcessingException e) {
+            logger.error("updateByName ", e);
         }
     }
 
@@ -95,12 +93,12 @@ public class githubDataRepository implements githubRepositoryI<List<Map<String,O
         String sql = """
                 SELECT id FROM users WHERE name = ?
                 """;
-        try{
+        try {
 
             return jdbcTemplate.queryForObject(sql, (rs, row) -> {
                 return rs.getLong("id");
             }, name);
-        }catch(DataAccessException e){
+        } catch (DataAccessException e) {
             return null;
         }
     }
@@ -121,7 +119,6 @@ public class githubDataRepository implements githubRepositoryI<List<Map<String,O
                 id = getIdByName(name);
                 jdbcTemplate.update(sqlInsertData, id, jsonObj);
             }
-
 
 
         } catch (JsonProcessingException e) {

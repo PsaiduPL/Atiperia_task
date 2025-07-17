@@ -1,9 +1,7 @@
 package org.apiteria.project.repositories;
 
-import java.util.Optional;
 
-
-public interface githubRepositoryI<T>{
+public interface AbstractGithubRepository<T>{
 
     T getByName(String name);
     void updateByName(String name,T obj);

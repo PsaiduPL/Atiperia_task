@@ -1,11 +1,10 @@
 package org.apiteria.project.services;
 
 
-import org.apiteria.project.repositories.githubDataRepository;
+import org.apiteria.project.repositories.GithubDataRepository;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
 import org.springframework.http.*;
@@ -20,12 +19,12 @@ public class GitService {
 
     private final Environment env;
     private final RestTemplate restTemplate;
-    private final githubDataRepository githubDataRepository;
+    private final GithubDataRepository githubDataRepository;
     final Logger logger = LoggerFactory.getLogger(GitService.class);
 
     GitService(RestTemplate restTemplate,
                Environment environment,
-               githubDataRepository githubDataRepository) {
+               GithubDataRepository githubDataRepository) {
 
         this.restTemplate = restTemplate;
         this.env = environment;
@@ -37,15 +36,15 @@ public class GitService {
     }
 
     public List<Map<String, Object>> getReposAsList(String nickname) throws Exception {
-        List<Map<String, Object>> data = null;
+        List<Map<String, Object>> repos = null;
         boolean ifExists = githubDataRepository.checkIfExists(nickname);
 
         if(ifExists){
-            data = githubDataRepository.getByName(nickname);
+            repos = githubDataRepository.getByName(nickname);
         }
-        if(data != null){
+        if(repos != null){
             logger.warn("zwrocona bez fetchowania");
-            return data;
+            return repos;
         }
 
         String url = "https://api.github.com/users/{nickname}/repos";
@@ -63,11 +62,15 @@ public class GitService {
                 nickname
         );
 
-        List<Map<String, Object>> repos = response.getBody();
+        repos = response.getBody();
 
         repos = filterDataForNotForkedRepos(repos);
         addBranchesToRepos(repos, nickname);
-
+        if(ifExists){
+            githubDataRepository.updateByName(nickname,repos);
+        }else{
+            githubDataRepository.insert(nickname,repos);
+        }
         return repos;
     }
 
