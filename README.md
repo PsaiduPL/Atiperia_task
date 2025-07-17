@@ -21,7 +21,7 @@ This application provides a single REST endpoint that interacts with the public 
 
 ### Prerequisites
 *   **Java 21** or newer
-  
+
 ### Additional
 *   **GitHub Personal Access Token for more requestes**
 ### Configuration
@@ -36,9 +36,19 @@ You can configure the token in one of the following ways:
     ```
 
 2.  **Properties File**:
-    Add the following line to the `src/main/resources/application.properties` file:
+    Add the following line to the `src/main/resources/application.properties` and `test/main/resources/application-test.properties`:
     ```properties
     passwd.gittoken=ghp_YourPersonalAccessToken
+    ```
+3. **Additional step for caching**
+   If you want version which contains caching with Postgresql,
+   download Postgresql switch to branch **feature/caching** and enter credentials in properties both src and test.
+    ```properties
+    
+    spring.datasource.url = ${POSTGRES_URL}
+    spring.datasource.username = ${USER}
+    spring.datasource.password = ${PASSWD}
+    
     ```
 
 ### Installation & Running
