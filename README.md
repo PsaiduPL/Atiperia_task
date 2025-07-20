@@ -40,17 +40,14 @@ You can configure the token in one of the following ways:
     ```properties
     passwd.gittoken=ghp_YourPersonalAccessToken
     ```
-3. **Additional step for caching** 
-    If you want version which contains caching with Postgresql,
-download Postgresql switch to branch **feature/caching** and enter credentials in properties both src and test. 
+3. **Additional step for caching**
+   If you want version which contains caching,
+    switch to branch **feature/caching** and enter settings you want for caching.
     ```properties
     
-    spring.datasource.url = ${POSTGRES_URL}
-    spring.datasource.username = ${USER}
-    spring.datasource.password = ${PASSWD}
-    
+     spring.cache.caffeine.spec=maximumSize=500,expireAfterWrite=1m
     ```
-    
+
 ### Installation & Running
 
 1.  **Clone the repository**
