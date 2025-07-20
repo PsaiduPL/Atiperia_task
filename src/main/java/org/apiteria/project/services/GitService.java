@@ -1,10 +1,9 @@
 package org.apiteria.project.services;
 
 
-import org.apiteria.project.repositories.GithubDataRepository;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
 import org.springframework.http.*;
@@ -19,38 +18,27 @@ public class GitService {
 
     private final Environment env;
     private final RestTemplate restTemplate;
-    private final GithubDataRepository githubDataRepository;
     final Logger logger = LoggerFactory.getLogger(GitService.class);
 
     GitService(RestTemplate restTemplate,
-               Environment environment,
-               GithubDataRepository githubDataRepository) {
+               Environment environment
+              ) {
 
         this.restTemplate = restTemplate;
         this.env = environment;
-        this.githubDataRepository = githubDataRepository;
+
 
         if (env.getProperty("api.gittoken").isBlank()) {
             logger.warn("No API key provided consider api key for more requestes");
         }
     }
-
+    @Cacheable(value = "cached-repos", key = "#nickname")
     public List<Map<String, Object>> getReposAsList(String nickname) throws Exception {
         List<Map<String, Object>> repos = null;
-        boolean ifExists = githubDataRepository.checkIfExists(nickname);
-
-        if(ifExists){
-            repos = githubDataRepository.getByName(nickname);
-        }
-        if(repos != null){
-            logger.warn("zwrocona bez fetchowania");
-            return repos;
-        }
 
         String url = "https://api.github.com/users/{nickname}/repos";
 
         HttpEntity<String> entity = getAuthorizationIfGitTokenExists();
-        //System.out.println(gitTokenOptional.isPresent());
 
 
         ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
@@ -66,11 +54,6 @@ public class GitService {
 
         repos = filterDataForNotForkedRepos(repos);
         addBranchesToRepos(repos, nickname);
-        if(ifExists){
-            githubDataRepository.updateByName(nickname,repos);
-        }else{
-            githubDataRepository.insert(nickname,repos);
-        }
         return repos;
     }
 
