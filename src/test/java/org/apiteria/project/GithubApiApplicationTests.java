@@ -120,8 +120,8 @@ public class GithubApiApplicationTests {
                     assertThat(repo.branches())
                             .extracting(Branch::name, Branch::sha)
                             .containsExactlyInAnyOrder(
-                                    org.assertj.core.groups.Tuple.tuple( "a1b2c3d4e5f6","main"),
-                                    org.assertj.core.groups.Tuple.tuple( "f6e5d4c3b2a1","develop")
+                                    org.assertj.core.groups.Tuple.tuple( "main","a1b2c3d4e5f6"),
+                                    org.assertj.core.groups.Tuple.tuple( "develop","f6e5d4c3b2a1")
                             );
                 });
     }

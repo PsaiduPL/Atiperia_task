@@ -14,10 +14,6 @@ import java.util.Optional;
 public class ServiceConfig {
 
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder.build();
-    }
-    @Bean
     public RestClient restClient(){
         return RestClient.builder().build();
     }
