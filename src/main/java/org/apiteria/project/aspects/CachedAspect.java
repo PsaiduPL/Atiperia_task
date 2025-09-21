@@ -9,16 +9,16 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 @Aspect
 @Component
 public class CachedAspect {
 
-    private final ConcurrentMap<CacheKey, CacheValue> cache = new ConcurrentHashMap<>();
+    private ConcurrentMap<CacheKey, CacheValue> cache = new ConcurrentHashMap<>();
 
     @Around("@annotation(org.apiteria.project.aspects.Cached)")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -32,7 +32,7 @@ public class CachedAspect {
 
         CacheValue cachedValue = cache.get(key);
 
-
+        clearIfNeeded(cachedAnnotation.size());
         if (cachedValue != null && !cachedValue.isExpired(cachedAnnotation.refreshUnit(), cachedAnnotation.refreshInterval())) {
             //System.out.println("Zwracam wynik z cache dla klucza: " + key);
             return cachedValue.getObject();
@@ -50,7 +50,20 @@ public class CachedAspect {
         return result;
     }
 
+    private void clearIfNeeded(int size){
+        System.out.println(size+" "+cache.size());
+        if(cache.size() >= size){
+            System.out.println("czyszcze cache");
+            cache = cache.entrySet().stream().sorted((obj,obj2)->{
+                return obj.getValue().timestamp.compareTo(obj2.getValue().timestamp);}
+            ).toList().subList(size/2,size)
+                    .stream()
+                    .collect(Collectors.toConcurrentMap(key->key.getKey(),key->key.getValue()));
 
+        }
+
+        return;
+    }
     private static final class CacheKey {
         private final Method method;
         private final Object[] args;

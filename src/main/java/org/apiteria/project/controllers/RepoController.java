@@ -3,6 +3,7 @@ package org.apiteria.project.controllers;
 
 import org.apiteria.project.GithubApiApplication;
 import org.apiteria.project.aspects.Cached;
+import org.apiteria.project.entity.Repo;
 import org.apiteria.project.services.GitService;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.Cacheable;
@@ -22,7 +23,7 @@ import java.util.Map;
 public class RepoController {
     GitService gitService;
 
-    RepoController(GitService gitService) {
+    public RepoController(GitService gitService) {
         this.gitService = gitService;
     }
 
@@ -32,7 +33,7 @@ public class RepoController {
 
 
     @GetMapping("/{nickname}")
-    public ResponseEntity<List<Map<String, Object>>> getAllUserDetails(@PathVariable String nickname)throws Exception {
+    public ResponseEntity<List<Repo>> getAllUserDetails(@PathVariable String nickname)throws Exception {
          return ResponseEntity.ok(gitService.getReposAsList(nickname));
     }
 }
