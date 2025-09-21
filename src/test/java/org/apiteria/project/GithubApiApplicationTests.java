@@ -1,69 +1,128 @@
 package org.apiteria.project;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.apiteria.project.entity.*;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 
 import java.util.List;
-import java.util.Map;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 
-class GithubApiApplicationTests {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+public class GithubApiApplicationTests {
+
     @Autowired
-    private TestRestTemplate restTemplate;
+    private WebTestClient webTestClient;
+
+
+    @RegisterExtension
+    static WireMockExtension wireMock = WireMockExtension
+            .newInstance()
+            .options(WireMockConfiguration.wireMockConfig().dynamicPort())
+            .build();
+
+
+    @DynamicPropertySource
+    static void configure(DynamicPropertyRegistry registry) {
+
+        registry.add("github.baseurl",wireMock::baseUrl);
+    }
+
     @Test
     void should_returnNonForkedRepositoriesWithBranches_forExistingUser() {
         // --- GIVEN ---
+        String username = "PsaiduPL";
+        String repoName = "Atiperia_task";
 
-        String nickname = "PsaiduPL";
-        String url = "/api/" + nickname;
 
-        ParameterizedTypeReference<List<Map<String, Object>>> responseType =
-                new ParameterizedTypeReference<>() {};
+        wireMock.stubFor(
+                WireMock.get(urlPathMatching("/users/[^/]+/repos")) // Używamy ścieżki względnej
+                        .willReturn(aResponse()
+                                        .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                                        //.withBodyFile("github-repos-response.json") // Lepsza praktyka: trzymaj JSON w pliku
+                                // Alternatywnie, tak jak u Ciebie:
 
-        // --- WHEN ---
-        ResponseEntity<List<Map<String, Object>>> responseEntity = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                null,
-                responseType
+                                .withBody(
+                                        """
+                                        [
+                                          {
+                                            "name": "Atiperia_task",
+                                            "owner": { "login": "PsaiduPL" },
+                                            "fork": false
+                                           
+                                          },
+                                          {
+                                            "name": "book-1",
+                                            "owner": { "login": "PsaiduPL" },
+                                            "fork": true
+                                          
+                                          }
+                                        ]
+                                        """
+                                ).withStatus(HttpStatus.OK.value())
+
+                        )
         );
 
-        // --- THEN ---
-        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
-        List<Map<String, Object>> repositories = responseEntity.getBody();
-        assertThat(repositories).isNotNull();
-        assertThat(repositories).isNotEmpty();
 
-        for (Map<String, Object> repo : repositories) {
+        wireMock.stubFor(
+                WireMock.get(urlPathEqualTo("/repos/PsaiduPL/Atiperia_task/branches"))
+                        .willReturn(aResponse()
+                                .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                                .withBody(
+                                        """
+                                        [
+                                          {
+                                            "name": "main",
+                                            "commit": { "sha": "a1b2c3d4e5f6" }
+                                          },
+                                          {
+                                            "name": "develop",
+                                            "commit": { "sha": "f6e5d4c3b2a1" }
+                                          }
+                                        ]
+                                        """
+                                ).withStatus(HttpStatus.OK.value())
+                        )
+        );
 
-            assertThat(repo).containsKeys("login", "repositoryName", "branches");
+        // --- WHEN & THEN ---
+        webTestClient.get()
+                .uri("/api/" + username)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBodyList(Repo.class) // Używamy naszego DTO
+                .value(repositories -> {
+                    // Sprawdzamy, czy aplikacja poprawnie odfiltrowała forki
+                    assertThat(repositories).hasSize(1);
 
+                    Repo repo = repositories.get(0);
+                    assertThat(repo.repositoryName()).isEqualTo(repoName);
+                    assertThat(repo.login()).isEqualTo(username);
 
-
-            assertThat(repo.get("login")).isEqualTo(nickname);
-            assertThat(repo.get("repositoryName")).isInstanceOf(String.class).isNotNull();
-
-
-            Object branchesObject = repo.get("branches");
-            assertThat(branchesObject).isInstanceOf(List.class);
-            List<Map<String, Object>> branches = (List<Map<String, Object>>) branchesObject;
-
-            assertThat(branches).isNotEmpty();
-
-            Map<String, Object> firstBranch = branches.get(0);
-            assertThat(firstBranch).containsKeys("name", "sha");
-            assertThat(firstBranch.get("name")).isInstanceOf(String.class).isNotNull();
-            assertThat(firstBranch.get("sha")).isInstanceOf(String.class).isNotNull();
-        }
+                    // Sprawdzamy gałęzie
+                    assertThat(repo.branches()).hasSize(2);
+                    assertThat(repo.branches())
+                            .extracting(Branch::name, Branch::sha)
+                            .containsExactlyInAnyOrder(
+                                    org.assertj.core.groups.Tuple.tuple( "main","a1b2c3d4e5f6"),
+                                    org.assertj.core.groups.Tuple.tuple( "develop","f6e5d4c3b2a1")
+                            );
+                });
     }
 }
